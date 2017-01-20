@@ -762,7 +762,7 @@ class ScalewayImages
                 array_push($this->images, $image);
             }
             //!!!!!!
-            //Don't know why by Scaleway has multiple IDs for the same image. We preffer only one as we can't display 100 distributions to client.
+            //Don't know why but Scaleway has multiple IDs for the same image. We preffer only one as we can't display thousands of distributions to client.
             $buffer = $this->images;
             $this->images = array();
             foreach($buffer as $key => $value)
@@ -827,7 +827,16 @@ class ScalewayImages
                     array_push($this->images, $value);
                 }
             }
-            return true;
+
+            if( count($this->images) < 1)
+            {
+                $this->queryInfo = "Image was not found on Scaleway database!";
+                return false;
+            }
+            else
+            {
+                return true;
+            }
         }
         else
             return false;
@@ -967,6 +976,7 @@ function Scaleway_CreateAccount(array $params)
         {
             return "Failed. Image selected is not available!\n Error msg: " . $scwImage->queryInfo;
         }
+
         $image_id = $scwImage->images["0"]["id"];
         if( strlen($image_id) < 25 )
             return "Invalid image and/or designated architecture";
@@ -1203,7 +1213,9 @@ function Scaleway_AdminCustomButtonArray()
 {
     return array(
         "Reboot server"=> "RebootServer",
-        "Update stats" => "updateStats"
+        "Update stats" => "updateStats",
+        "GetARMimgsList" => "GetArmImagesList",
+        "GetXimgsList" => "GetX86_64ImagesList",
     );
 }
 
@@ -1374,6 +1386,76 @@ function Scaleway_AdminServicesTabFields(array $params)
     }
 
     return array();
+}
+
+function Scaleway_GetArmImagesList(array $params)
+{
+    try
+    {
+        $token = $params["configoption1"];
+
+        $scwImage = new ScalewayImages($token);
+
+        if( !$scwImage->getImagesByArch( "arm") )
+        {
+            return "Failed. This is bad: " . $scwImage->queryInfo;
+        }
+
+        $images_concat = "";
+        foreach ($scwImage->images as $img)
+        {
+            $images_concat .= $img["name"] . ",";
+        }
+        return $images_concat;
+    }
+    catch (Exception $e)
+    {
+        // Record the error in WHMCS's module log.
+        logModuleCall(
+            'Scaleway',
+            __FUNCTION__,
+            $params,
+            $e->getMessage(),
+            $e->getTraceAsString()
+        );
+
+        return $e->getMessage();
+    }
+}
+
+function Scaleway_GetX86_64ImagesList(array $params)
+{
+    try
+    {
+        $token = $params["configoption1"];
+
+        $scwImage = new ScalewayImages($token);
+
+        if( !$scwImage->getImagesByArch( "x86_64") )
+        {
+            return "Failed. This is bad: " . $scwImage->queryInfo;
+        }
+
+        $images_concat = "";
+        foreach ($scwImage->images as $img)
+        {
+            $images_concat .= $img["name"] . ",";
+        }
+        return $images_concat;
+    }
+    catch (Exception $e)
+    {
+        // Record the error in WHMCS's module log.
+        logModuleCall(
+            'Scaleway',
+            __FUNCTION__,
+            $params,
+            $e->getMessage(),
+            $e->getTraceAsString()
+        );
+
+        return $e->getMessage();
+    }
 }
 
 //  ____ _     ___ _____ _   _ _____
