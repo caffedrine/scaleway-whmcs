@@ -1,6 +1,6 @@
 <?php
 /*
-Copyright (c) 2016 1WAY HOSTING
+Copyright (c) 2016 1WAY HOSTING (https://1way.pro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -14,6 +14,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 // / /__| (_) | | | |  _| | (_| |
 // \____/\___/|_| |_|_| |_|\__, |
 //                         |___/
+
 if (!defined("WHMCS"))
     die("This file cannot be accessed directly");
 
@@ -84,7 +85,7 @@ class ScalewayApi
 		if($endpoint == "/organizations")
 			curl_setopt($call, CURLOPT_URL, 'https://account.scaleway.com' . $endpoint);
 		else
-			curl_setopt($call, CURLOPT_URL, 'https://api.scaleway.com' . $endpoint);
+			curl_setopt($call, CURLOPT_URL, 'https://cp-par1.scaleway.com' . $endpoint);
 		
 		curl_setopt($call, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 		
@@ -745,6 +746,7 @@ class ScalewayImages
 
     private function updateImages()
     {
+        $this->images = array();
         $imgs = $this->api->retrieve_images();
         if($imgs["httpCode"] == 200)
         {
@@ -761,15 +763,12 @@ class ScalewayImages
                         );
                 array_push($this->images, $image);
             }
+
             //!!!!!!
-            //Don't know why but Scaleway has multiple IDs for the same image. We preffer only one as we can't display thousands of distributions to client.
-            $buffer = $this->images;
-            $this->images = array();
-            foreach($buffer as $key => $value)
-            {
-                if( !$this->in_array_custom($value, $this->images) )
-                    array_push($this->images, $value);
-            }
+            //Don't know why but Scaleway has multiple IDs for the same image. We preffer to keep only one as we can't display thousands distributions names to client.
+
+            // ?????????????
+            //$this->images = $this->remove_duplicates($this->images);
             return true;
         }
         else
@@ -777,6 +776,19 @@ class ScalewayImages
             $this->queryInfo = json_decode($imgs["json"], true)["message"];
             return false;
         }
+    }
+
+    public function remove_duplicates($images = array())
+    {
+        $buffer = $images;
+        $images = array();
+
+        foreach($buffer as $key => $value)
+        {
+            if( !$this->in_array_custom($value, $images) )
+                array_push($images, $value);
+        }
+        return $images;
     }
 
     private function in_array_custom($element, $arr = array() )
@@ -1401,6 +1413,8 @@ function Scaleway_GetArmImagesList(array $params)
             return "Failed. This is bad: " . $scwImage->queryInfo;
         }
 
+        $scwImage->images = $scwImage->remove_duplicates($scwImage->images);
+
         $images_concat = "";
         foreach ($scwImage->images as $img)
         {
@@ -1436,11 +1450,14 @@ function Scaleway_GetX86_64ImagesList(array $params)
             return "Failed. This is bad: " . $scwImage->queryInfo;
         }
 
+        $scwImage->images = $scwImage->remove_duplicates($scwImage->images);
+
         $images_concat = "";
         foreach ($scwImage->images as $img)
         {
             $images_concat .= $img["name"] . ",";
         }
+
         return $images_concat;
     }
     catch (Exception $e)
