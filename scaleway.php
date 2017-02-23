@@ -23,6 +23,7 @@ define(MODDIR, $_SERVER['DOCUMENT_ROOT'] . "/modules/servers/scaleway/");
 include(MODDIR . 'lib/phpseclib104/Net/SSH2.php');
 include(MODDIR . 'lib/phpseclib104/Crypt/RSA.php');
 
+
 //     _    ____ ___     ____    _    _     _     ____
 //    / \  |  _ \_ _|   / ___|  / \  | |   | |   / ___|
 //   / _ \ | |_) | |   | |     / _ \ | |   | |   \___ \
@@ -31,7 +32,8 @@ include(MODDIR . 'lib/phpseclib104/Crypt/RSA.php');
 class ScalewayApi
 {
 	private $token = "";
-	
+    private $callUrl = "";
+
 	// Status codes returned by scaleway
 	public $statusCodes = 
                 [
@@ -64,9 +66,23 @@ class ScalewayApi
                     //PS: Strange, they say "8 Dedicated x86 64bit", x86 means 32bit...;
                 ];
 
-	function __construct($tokenStr)
+    public $availableLocations =
+                [
+                    "Paris"     => "par1",
+                    "Amsterdam" => "ams1",
+
+                    //Let's accept par1 and ams1 as valid locations
+                    "par1"      => "par1",
+                    "ams1"      => "ams1",
+                ];
+
+	function __construct($tokenStr, $location)
 	{
 		$this->token = $tokenStr;
+
+        //We have to build call url with the right location (par1 or ams1)
+        //Example: https://cp-par1.scaleway.com
+        $this->callUrl = "https://cp-" . $this->availableLocations[$location] . ".scaleway.com";
 	}
 	// ____       _            _            
 	//|  _ \ _ __(_)_   ____ _| |_ ___  ___ 
@@ -85,7 +101,7 @@ class ScalewayApi
 		if($endpoint == "/organizations")
 			curl_setopt($call, CURLOPT_URL, 'https://account.scaleway.com' . $endpoint);
 		else
-			curl_setopt($call, CURLOPT_URL, 'https://cp-par1.scaleway.com' . $endpoint);
+			curl_setopt($call, CURLOPT_URL, $this->callUrl . $endpoint);
 		
 		curl_setopt($call, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 		
@@ -436,6 +452,8 @@ class ScalewayApi
 class ScalewayServer
 {
     protected $api = "";
+    protected $srvLoc = "par1"; //let's set a default value.
+
     public $server_id = "";
 
     //This store the API result. Usefull in case of error.
@@ -498,9 +516,10 @@ class ScalewayServer
             );
     public $organization = "";
 
-    function __construct($token)
+    function __construct($token, $location)
     {
-        $this->api = new ScalewayApi($token);
+        $this->srvLoc = $location;
+        $this->api = new ScalewayApi($token, $this->srvLoc);
     }
 
     public function setServerId($srv_id)
@@ -735,12 +754,15 @@ class ScalewayServer
 class ScalewayImages
 {
     public $api = "";
+    protected $srvLoc = "par1";
+
     public $images = array();
     public $queryInfo = "";
 
-    function __construct($token)
+    function __construct($token, $location)
     {
-        $this->api = new ScalewayApi($token);
+        $this->srvLoc = $location;
+        $this->api = new ScalewayApi($token, $this->srvLoc);
         $this->updateImages();
     }
 
@@ -977,12 +999,13 @@ function Scaleway_CreateAccount(array $params)
 
         $os_name = $params["customfields"]["Operating system"];
         $curr_server_id = $params["customfields"]["Server ID"];
+        $location = $params["customfields"]["Location"];
 
-        $scwServer = new ScalewayServer($token);
+        $scwServer = new ScalewayServer($token, $location);
         if(strlen($curr_server_id) == 36)
             $scwServer->setServerId($curr_server_id);
 
-        $scwImage = new ScalewayImages($token);
+        $scwImage = new ScalewayImages($token, $location);
 
         if( !$scwImage->getImageByName( $arch, $os_name) )
         {
@@ -1054,8 +1077,9 @@ function Scaleway_SuspendAccount(array $params)
     {
         $token = $params["configoption1"];
         $curr_server_id = $params["customfields"]["Server ID"];
+        $location = $params["customfields"]["Location"];
 
-        $scwServer = new ScalewayServer($token);
+        $scwServer = new ScalewayServer($token, $location);
         if(strlen($curr_server_id) == 36)
             $scwServer->setServerId($curr_server_id);
         else
@@ -1099,8 +1123,9 @@ function Scaleway_UnsuspendAccount(array $params)
     {
         $token = $params["configoption1"];
         $curr_server_id = $params["customfields"]["Server ID"];
+        $location = $params["customfields"]["Location"];
 
-        $scwServer = new ScalewayServer($token);
+        $scwServer = new ScalewayServer($token, $location);
         if(strlen($curr_server_id) == 36)
             $scwServer->setServerId($curr_server_id);
         else
@@ -1143,8 +1168,9 @@ function Scaleway_RebootServer(array $params)
     {
         $token = $params["configoption1"];
         $curr_server_id = $params["customfields"]["Server ID"];
+        $location = $params["customfields"]["Location"];
 
-        $scwServer = new ScalewayServer($token);
+        $scwServer = new ScalewayServer($token, $location);
         if(strlen($curr_server_id) == 36)
             $scwServer->setServerId($curr_server_id);
         else
@@ -1181,8 +1207,9 @@ function Scaleway_TerminateAccount(array $params)
     {
         $token = $params["configoption1"];
         $curr_server_id = $params["customfields"]["Server ID"];
+        $location = $params["customfields"]["Location"];
 
-        $scwServer = new ScalewayServer($token);
+        $scwServer = new ScalewayServer($token, $location);
         if(strlen($curr_server_id) == 36)
             $scwServer->setServerId($curr_server_id);
         else
@@ -1237,8 +1264,9 @@ function Scaleway_updateStats(array $params)
     {
         $server_id = $params["customfields"]["Server ID"];
         $token = $params["configoption1"];
+        $location = $params["customfields"]["Location"];
 
-        $scwServer = new ScalewayServer($token);
+        $scwServer = new ScalewayServer($token, $location);
         $scwServer->setServerId($server_id);
 
         if( !$scwServer->retrieveDetails() )
@@ -1311,8 +1339,9 @@ function Scaleway_AdminServicesTabFields(array $params)
     {
         $server_id = $params["customfields"]["Server ID"];
         $token = $params["configoption1"];
+        $location = $params["customfields"]["Location"];
 
-        $scwServer = new ScalewayServer($token);
+        $scwServer = new ScalewayServer($token, $location);
         $scwServer->setServerId($server_id);
 
         if( !$scwServer->retrieveDetails() )
@@ -1405,8 +1434,9 @@ function Scaleway_GetArmImagesList(array $params)
     try
     {
         $token = $params["configoption1"];
+        $location = $params["customfields"]["Location"];
 
-        $scwImage = new ScalewayImages($token);
+        $scwImage = new ScalewayImages($token, $location);
 
         if( !$scwImage->getImagesByArch( "arm") )
         {
@@ -1442,8 +1472,9 @@ function Scaleway_GetX86_64ImagesList(array $params)
     try
     {
         $token = $params["configoption1"];
+        $location = $params["customfields"]["Location"];
 
-        $scwImage = new ScalewayImages($token);
+        $scwImage = new ScalewayImages($token, $location);
 
         if( !$scwImage->getImagesByArch( "x86_64") )
         {
@@ -1499,8 +1530,9 @@ function Scaleway_ClientRebootServer(array $params)
     {
         $token = $params["configoption1"];
         $curr_server_id = $params["customfields"]["Server ID"];
+        $location = $params["customfields"]["Location"];
 
-        $scwServer = new ScalewayServer($token);
+        $scwServer = new ScalewayServer($token, $location);
         if(strlen($curr_server_id) == 36)
             $scwServer->setServerId($curr_server_id);
         else
@@ -1535,8 +1567,9 @@ function Scaleway_ClientPowerOffServer(array $params)
     {
         $token = $params["configoption1"];
         $curr_server_id = $params["customfields"]["Server ID"];
+        $location = $params["customfields"]["Location"];
 
-        $scwServer = new ScalewayServer($token);
+        $scwServer = new ScalewayServer($token, $location);
         if(strlen($curr_server_id) == 36)
             $scwServer->setServerId($curr_server_id);
         else
@@ -1571,8 +1604,9 @@ function Scaleway_ClientPowerOnServer(array $params)
     {
         $token = $params["configoption1"];
         $curr_server_id = $params["customfields"]["Server ID"];
+        $location = $params["customfields"]["Location"];
 
-        $scwServer = new ScalewayServer($token);
+        $scwServer = new ScalewayServer($token, $location);
         if(strlen($curr_server_id) == 36)
             $scwServer->setServerId($curr_server_id);
         else
@@ -1612,8 +1646,9 @@ function Scaleway_ClientArea(array $params)
     {
         $server_id = $params["customfields"]["Server ID"];
         $token = $params["configoption1"];
+        $location = $params["customfields"]["Location"];
 
-        $scwServer = new ScalewayServer($token);
+        $scwServer = new ScalewayServer($token, $location);
         $scwServer->setServerId($server_id);
         $scwServer->retrieveDetails();
 
@@ -1685,5 +1720,86 @@ function Scaleway_ClientArea(array $params)
                 'usefulErrorHelper' => $e->getMessage(),
             ));
     }
+}
 
+function Scaleway_ClientUpdateStatsFunction(array $params)
+{
+    try
+    {
+        $server_id = $params["customfields"]["Server ID"];
+        $token = $params["configoption1"];
+        $location = $params["customfields"]["Location"];
+
+        $scwServer = new ScalewayServer($token, $location);
+        $scwServer->setServerId($server_id);
+        $scwServer->retrieveDetails();
+
+        //IF root password was not set, do it now and mark as changed in case of success by checking the "Root password updated" check bok.
+        if($params["customfields"]["Root password updated"] == "" && $scwServer->state == "running" && $scwServer->state_detail == "booted") // if root password was not set
+        {
+            $sshKey = $ssh_key = $params["configoption4"];
+            $newHostname = explode(".", $params["domain"])[0];
+            $newPassword = $params["password"];
+
+            if( $scwServer->update_info_server($newPassword, $newHostname, $sshKey) )
+            {
+                $command = "updateclientproduct";
+                $adminuser = $params["configoption5"];
+                $values["serviceid"] = $params["serviceid"];
+
+                $values["serviceusername"] = "administrator";
+                //We only have to update server ID, the rest of field will be automaticall updated on refresh.
+                $values["customfields"] = base64_encode(serialize(array("Root password updated"=> "on" )));
+                localAPI($command, $values, $adminuser);
+
+                return array("Updateeed!");
+            }
+            else
+            {
+                return array("Failed to set new password. Details: " . $scwServer->queryInfo);
+            }
+        }
+
+        return array(
+            'templateVariables' => array(
+                'sid' =>$scwServer->server_id,
+                'sname' => $scwServer->hostname,
+                'sstate' => $scwServer->state,
+                'sstatedetail' => $scwServer->state_detail,
+                'rootvolume' => "Size: " . $scwServer->image["root_volume"]["size"]/1000000000 . "GB" . " Type: " . $scwServer->image["root_volume"]["volume_type"],
+                'image' => $scwServer->image["name"],
+                'creationdate' =>$scwServer->creation_date,
+                'publicipv4' => "Address: " . $scwServer->public_ip["address"],
+                'privateipv4' => "Address: " . $scwServer->private_ip ,
+                'dynamiciprequired' => $scwServer->dynamic_ip_required,
+                'modificationdate' => $scwServer->modification_date,
+                'ipv6enabled' => $scwServer->enable_ipv6,
+                'ipv6' => $scwServer->ipv6,
+                'bootscript' =>$scwServer->bootscript["kernel"],
+                'location' => "Platform ID: " . $scwServer->location["platform_id"] . " -- Node ID: " . $scwServer->location["node_id"] . " -- Blade ID: " . $scwServer->location["blade_id"] . " -- Zone ID: " . $scwServer->location["zone_id"] . " -- Chassis ID: " . $scwServer->location["chassis_id"],
+                'commercialtype' => $scwServer->commercial_type,
+                'tags' => implode(",", $scwServer->tags),
+                'architecture' => $scwServer->arch,
+                'extranetworks' => (json_encode($scwServer->extra_networks) == "Array"?$scwServer->extra_networks:""),
+                'volumes' => (json_encode($scwServer->volumes) == "Array"?$scwServer->volumes:""),
+                'securitygroup' => "Name:" . $scwServer->security_group["name"] . " -- ID: " . $scwServer->security_group["id"],
+            ));
+    }
+    catch (Exception $e)
+    {
+        // Record the error in WHMCS's module log.
+        logModuleCall(
+            'provisioningmodule',
+            __FUNCTION__,
+            $params,
+            $e->getMessage(),
+            $e->getTraceAsString()
+        );
+        // In an error condition, display an error page.
+        return array(
+            'tabOverviewReplacementTemplate' => 'error.tpl',
+            'templateVariables' => array(
+                'usefulErrorHelper' => $e->getMessage(),
+            ));
+    }
 }
