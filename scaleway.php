@@ -705,7 +705,7 @@ class ScalewayServer
             $ssh = new Net_SSH2($ipAddr);
             if (!$ssh->login("root", $rsa))
             {
-                $this->queryInfo = "Failed to login to server via SSH2! => " . ($ssh->isConnected() ? 'bad username or password' : 'unable to establish connection');
+                $this->queryInfo = "Net_SSH2 => failed to login to server via SSH2! => " . ($ssh->isConnected() ? 'bad username or password' : 'unable to establish connection');
                 return false;
             }
 
@@ -752,14 +752,16 @@ class ScalewayServer
             $ssh->read("Is this information correct? [Y/n]");
             $ssh->write("Y\n");
 
+            //Don't forget to remove old SSH key
+            $ssh->exec("rm /root/.ssh/authorized_keys");
+
             return true;
         }
         catch(Exception $e)
         {
-           $this->queryInfo = $e->getMessage();
+           $this->queryInfo = "Net_SSH2 Exception => " . $e->getMessage();
             return false;
         }
-
     }
 }
 
@@ -1324,14 +1326,14 @@ function Scaleway_updateStats(array $params)
 
                 $values["serviceusername"] = "administrator";
                 //We only have to update server ID, the rest of field will be automaticall updated on refresh.
-                $values["customfields"] = base64_encode(serialize(array("Root password updated"=> "on" )));
+                $values["customfields"] = base64_encode(serialize(array("Root password updated" => "on" )));
                 localAPI($command, $values, $adminuser);
 
-                return array("Updateeed!");
+                return 'success';
             }
             else
             {
-                return array("Failed to set new password. Details: " . $scwServer->queryInfo);
+                return "Failed to set new password. Details: " . $scwServer->queryInfo;
             }
         }
     }
@@ -1392,7 +1394,7 @@ function Scaleway_AdminServicesTabFields(array $params)
             }
             else
             {
-                return array("Error returned" => "Failed to set new password. Details: " . $scwServer->queryInfo);
+                //return array("Error returned" => "Failed to set new password. Details: " . $scwServer->queryInfo);
             }
         }
 
