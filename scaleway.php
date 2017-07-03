@@ -16,13 +16,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 //                         |___/
 
 if (!defined("WHMCS"))
-    die("This file cannot be accessed directly");
+    die("This file cannot be accessed directly  _|_");
 
 //I have changed paths in those classes in order to make'em work. I don't like this too...
 define(MODDIR, $_SERVER['DOCUMENT_ROOT'] . "/modules/servers/scaleway/");
 include(MODDIR . 'lib/phpseclib104/Net/SSH2.php');
 include(MODDIR . 'lib/phpseclib104/Crypt/RSA.php');
-
 
 //     _    ____ ___     ____    _    _     _     ____
 //    / \  |  _ \_ _|   / ___|  / \  | |   | |   / ___|
@@ -35,38 +34,52 @@ class ScalewayApi
     private $callUrl = "";
 
 	// Status codes returned by scaleway
-	public $statusCodes = 
+	public static $statusCodes =
                 [
-                    "200" => "OK",
-                    "400" => "Error 400: bad request. Maybe there is missing a required parameter?",
-                    "201" => "Error 201: This is not an error but you should not be here!",
-                    "204" => "Error 204: A delete action performed successfully! You should not be here however!",
-                    "401" => "Error 401: auth error. No valid API key provided!",
-                    "402" => "Error 402: request failed. Parameters were valid but request failed!",
-                    "403" => "Error 403: forbidden. Insufficient privileges to access requested resource or the caller IP may be blacklisted!",
-                    "404" => "Error 404: not found 404 not found 404 not found 404 not found, what are you looking for?",
-                    "50x" => "Error 50x: means server error. Dude, this is bad..:(",
+                    "200" => "Scaleway API - OK",
+                    "400" => "Scaleway API - Error 400: bad request. Maybe there is missing a required parameter?",
+                    "201" => "Scaleway API - Error 201: This is not an error but you should not be here!",
+                    "204" => "Scaleway API - Error 204: A delete action performed successfully! You should not be here however!",
+                    "401" => "Scaleway API - Error 401: auth error. No valid API key provided!",
+                    "402" => "Scaleway API - Error 402: request failed. Parameters were valid but request failed!",
+                    "403" => "Scaleway API - Error 403: forbidden. Insufficient privileges to access requested resource or the caller IP may be blacklisted!",
+                    "404" => "Scaleway API - Error 404: not found 404 not found 404 not found 404 not found, what are you looking for?",
+                    "50x" => "Scaleway API - Error 50x: means server error. Dude, this is bad..:(",
 
                     //Custom
                     "123" => "Error 123: means new volume creation failed. This error appear when try to allocate new volume for the new server!"
                 ];
 	
-	public $commercialTypes = 
+	public static $commercialTypes =
                 [
                     // Type => processor_cores D[dedicated]/S[hared]C_RAM
-                    "C1" => "ARM_4DC_2GB",
+                    //Starter category
+                    "ARM64-2GB" => "ARM_4SC_2GB",
+                    "ARM64-4GB" => "ARM_6SC_4GB",
+                    "ARM64-8GB" => "ARM_8SC_8GB",
+                    "VC1S"      => "x86_2SC_2GB",
+                    "VC1M"      => "x86_4SC_4GB",
+                    "VC1L"      => "x86_6SC_8GB",
 
-                    "C2S" => "x86_4DC_8GB",
-                    "C2M" => "x86_8DC_16GB",
-                    "C2L" => "x86_8DC_32GB",
+                    //Baremetal tab
+                    "C1"    => "ARM_4DC_2GB",
+                    "C2S"   => "x86_4DC_8GB",
+                    "C2M"   => "x86_8DC_16GB",
+                    "C2L"   => "x86_8DC_32GB",
 
-                    "VC1S" => "x86_2SC_2GB",
-                    "VC1M" => "x86_4SC_4GB",
-                    "VC1L" => "x86_6SC_8GB"
+                    //Intensive tab
+                    "ARM64-16GB"    => "ARM_16SC_16GB",
+                    "ARM64-32GB"    => "ARM_32SC_32GB",
+                    "ARM64-64GB"    => "ARM_48SC_64GB",
+                    "ARM64-128GB"   => "ARM_64SC_128GB",
+                    "X64-15GB"      => "x64_6SC_15GB",
+                    "X64-30GB"      => "x64_8SC_30GB",
+                    "X64-60GB"      => "x64_10SC_60GB",
+                    "X64-120GB"     => "x64_12SC_120GB",
                     //PS: Strange, they say "8 Dedicated x86 64bit", x86 means 32bit...;
                 ];
 
-    public $availableLocations =
+    public static $availableLocations =
                 [
                     "Paris"     => "par1",
                     "Amsterdam" => "ams1",
@@ -127,8 +140,13 @@ class ScalewayApi
 		$result = curl_exec($call);
 		$resultHttpCode = curl_getinfo($call, CURLINFO_HTTP_CODE);
 		curl_close($call);
-		
-		
+
+		if($resultHttpCode == "")
+        {
+            $tmpArr = array("message" => "Two possibilities: 1. CURL request to Scaleway failed; you may be behind a firewall! Try this to be sure check with: ping cp-par1.scaleway.com<br>2. Location passed to API is invalid!");
+            $result = json_encode($tmpArr);
+        }
+
 		//Return an arry with HTTP_CODE returned and the JSON content writen by server.
 		return array(
 					"httpCode" => $resultHttpCode,
@@ -788,7 +806,7 @@ class ScalewayImages
 
             //!!!!!!
             //Don't know why but Scaleway has multiple IDs for the same image. We preffer to keep only one as we can't display thousands distributions names to client.
-
+            //Later update: images have different kernels...
             // ?????????????
             //$this->images = $this->remove_duplicates($this->images);
             return true;
@@ -843,7 +861,9 @@ class ScalewayImages
             return true;
         }
         else
+        {
             return false;
+        }
     }
 
     public function getImageByName($arch, $name, $public = true)
@@ -927,6 +947,12 @@ function Scaleway_MetaData()
 
 function Scaleway_ConfigOptions()
 {
+    $commercial_types = array();
+    foreach(ScalewayApi::$commercialTypes as $ctype => $cval)
+    {
+        array_push($commercial_types,($ctype . " - " . $cval));
+    }
+
     return array
     (
         // a password field type allows for masked text input
@@ -949,15 +975,7 @@ function Scaleway_ConfigOptions()
         'Commercial type' => array
         (
             'Type' => 'dropdown',
-            'Options' => array(
-                'C1' => 'C1 - ARM_4DC_2GB',
-                'C2S' => 'C2S - x86_4DC_8GB',
-                'C2M' => 'C2M - x86_8DC_16GB',
-                'C2L' => 'C2L - x86_8DC_32GB',
-                'VC1S' => 'VC1S - x86_2SC_2GB',
-                'VC1M' => 'VC1M - x86_4SC_4GB',
-                'VC1L' => 'VC1L - x86_6SC_8GB',
-            ),
+            'Options' => $commercial_types,
             'Description' => 'Choose one',
         ),
 
