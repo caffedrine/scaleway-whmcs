@@ -34,7 +34,7 @@ class ScalewayApi
     private $callUrl = "";
 
 	// Status codes returned by scaleway
-	public static $statusCodes =
+	public $statusCodes =
                 [
                     "200" => "Scaleway API - OK",
                     "400" => "Scaleway API - Error 400: bad request. Maybe there is missing a required parameter?",
@@ -95,7 +95,7 @@ class ScalewayApi
 
         //We have to build call url with the right location (par1 or ams1)
         //Example: https://cp-par1.scaleway.com
-        $this->callUrl = "https://cp-" . $this->availableLocations[$location] . ".scaleway.com";
+        $this->callUrl = "https://cp-" . ScalewayApi::$availableLocations[$location] . ".scaleway.com";
 	}
 	// ____       _            _            
 	//|  _ \ _ __(_)_   ____ _| |_ ___  ___ 
@@ -1453,7 +1453,6 @@ function Scaleway_GetArmImagesList(array $params)
     {
         $token = $params["configoption1"];
         $location = $params["customfields"]["Location"];
-
         $scwImage = new ScalewayImages($token, $location);
 
         if( !$scwImage->getImagesByArch( "arm") )
