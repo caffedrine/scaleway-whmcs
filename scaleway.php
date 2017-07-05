@@ -53,29 +53,25 @@ class ScalewayApi
 	public static $commercialTypes =
                 [
                     // Type => processor_cores D[dedicated]/S[hared]C_RAM
-                    //Starter category
-                    "ARM64-2GB" => "ARM_4SC_2GB",
-                    "ARM64-4GB" => "ARM_6SC_4GB",
-                    "ARM64-8GB" => "ARM_8SC_8GB",
-                    "VC1S"      => "x86_2SC_2GB",
-                    "VC1M"      => "x86_4SC_4GB",
-                    "VC1L"      => "x86_6SC_8GB",
+                    "C1"        => "ARM_4DC_2GB",
+                    "C2S"       => "x86_4DC_8GB",
+                    "C2M"       => "x86_8DC_16GB",
+                    "C2L"       => "x86_8DC_32GB",
 
-                    //Baremetal tab
-                    "C1"    => "ARM_4DC_2GB",
-                    "C2S"   => "x86_4DC_8GB",
-                    "C2M"   => "x86_8DC_16GB",
-                    "C2L"   => "x86_8DC_32GB",
-
-                    //Intensive tab
-                    "ARM64-16GB"    => "ARM_16SC_16GB",
-                    "ARM64-32GB"    => "ARM_32SC_32GB",
-                    "ARM64-64GB"    => "ARM_48SC_64GB",
-                    "ARM64-128GB"   => "ARM_64SC_128GB",
+                    //X64
+                    "X64-2GB"      => "x64_6SC_2GB",
+                    "X64-4GB"      => "x64_6SC_4GB",
+                    "X64-8GB"      => "x64_6SC_8GB",
                     "X64-15GB"      => "x64_6SC_15GB",
                     "X64-30GB"      => "x64_8SC_30GB",
                     "X64-60GB"      => "x64_10SC_60GB",
                     "X64-120GB"     => "x64_12SC_120GB",
+
+                    //ARMs
+                    "ARM64-2GB"     => "ARM_4SC_2GB",
+                    "ARM64-4GB"     => "ARM_6SC_4GB",
+                    "ARM64-8GB"     => "ARM_8SC_8GB",
+
                     //PS: Strange, they say "8 Dedicated x86 64bit", x86 means 32bit...;
                 ];
 
