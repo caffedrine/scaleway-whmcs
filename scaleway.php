@@ -1243,7 +1243,7 @@ function Scaleway_TerminateAccount(array $params)
 
             //We only have to update server ID, the rest of field will be automaticall updated on refresh.
             $values["status"] = "Terminated";
-            $values["customfields"] = base64_encode(serialize(array("Server ID"=> "terminated" )));
+            $values["customfields"] = base64_encode(serialize(array("Server ID"=> "terminated-" . $curr_server_id )));  //keep history of server ID in case client made nasty things from your server
 
             localAPI($command, $values, $adminuser);
         }
