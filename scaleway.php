@@ -1051,9 +1051,6 @@ function Scaleway_CreateAccount(array $params)
             return "Failed. Image selected is not available!\n Error msg: " . $scwImage->queryInfo;
         }
 
-        logModuleCall('Scaleway', __FUNCTION__, $arch, "blabla", "1243");
-        return "success";
-
         $image_id = $scwImage->images["0"]["id"];
         if( strlen($image_id) < 25 )
             return "Invalid image and/or designated architecture";
