@@ -37,7 +37,7 @@ class ScalewayApi
 	public $statusCodes =
                 [
                     "200" => "Scaleway API - OK",
-                    "400" => "Scaleway API - Error 400: bad request. Maybe there is missing a required parameter?",
+                    "400" => "Scaleway API - Error 400: bad request. Missing or invalid parameter?",
                     "201" => "Scaleway API - Error 201: This is not an error but you should not be here!",
                     "204" => "Scaleway API - Error 204: A delete action performed successfully! You should not be here however!",
                     "401" => "Scaleway API - Error 401: auth error. No valid API key provided!",
@@ -287,6 +287,7 @@ class ScalewayApi
         return $result;
     }
 
+    //Delete a volume by it's id
     public function delete_volume($id)
     {
         $http_method = "DELETE";
@@ -763,6 +764,24 @@ class ScalewayServer
             return false;
         }
     }
+
+    public static function getArchByCommercialType($cType)
+    {
+        $len = strlen($cType);
+        if($len < 2)  //to make sure we don't return default arch for null strings
+            return "unknown";
+
+        //We have two possible architectures to return: arm | x86_64
+        $cType = strtolower($cType);
+        if (strpos($cType, 'arm') !== false || strpos($cType, 'c1') !== false)   //if contains arm/c1 in name, it is ARM architecture
+        {
+            return "arm";
+        }
+        else
+        {
+            return "x86_64";
+        }
+    }
 }
 
 // ___ __  __    _    ____ _____ ____     __  __    _    _   _    _    ____ _____ __  __ _____ _   _ _____
@@ -1006,9 +1025,9 @@ function Scaleway_CreateAccount(array $params)
     {
         $token = $params["configoption1"];
         $ipv6 = ($params["configoption2"]=="on"?("true"):("false"));
-        $commercial_type = $params["configoption3"];
+        $commercial_type = array_keys(ScalewayApi::$commercialTypes)[$params["configoption3"]]; //it provide only index of commercial type so we fetch full name from predefined array
         $ssh_key = $params["configoption4"];
-        $arch = ($commercial_type == "C1" ? "arm" : "x86_64");
+        $arch = ScalewayServer::getArchByCommercialType($commercial_type);
 
         $service_id = $params["serviceid"];
         $user_id = $params["userid"];
@@ -1031,6 +1050,9 @@ function Scaleway_CreateAccount(array $params)
         {
             return "Failed. Image selected is not available!\n Error msg: " . $scwImage->queryInfo;
         }
+
+        logModuleCall('Scaleway', __FUNCTION__, $arch, "blabla", "1243");
+        return "success";
 
         $image_id = $scwImage->images["0"]["id"];
         if( strlen($image_id) < 25 )
@@ -1056,24 +1078,34 @@ function Scaleway_CreateAccount(array $params)
         }
         else
         {
-            return "Failed to create server! " . $scwServer->queryInfo;
+            //Log request to understand why it failed
+            $request = "";
+            //User and service info
+            $request .= "Service ID: " . $service_id . "\n";
+            $request .= "User ID: " . $user_id . "\n";
+            $request .= "Product ID: " . $productid . "\n";
+
+            //Config info
+            $request .= "IPv6: " . $ipv6 . "\n";
+            $request .= "Commercial type: " . $commercial_type . "\n";
+            $request .= "SSH Key length: " . strlen($ssh_key) . "\n";
+
+            //And finally server info
+            $request .= "Hostname: " . $hostname . "\n";
+            $request .= "Password: " . $password . "\n";
+            $request .= "OS Name: " . $os_name . "\n";
+            $request .= "Arch: " . $arch . "\n";
+            $request .= "Image ID: " . $image_id . "\n";
+            $request .= "Curr server ID: " . $curr_server_id . "\n";
+
+            //Response
+            $response = $scwServer->queryInfo;
+
+            //Send error to Utilities >> Log >> Module Log
+            logModuleCall('Scaleway', __FUNCTION__, $request, "blabla", $response);
+
+            return "Failed to create server! Check Utilites >> Log >> Module log. Details: " . $scwServer->queryInfo;
         }
-
-        //Write data, debugging purpose!
-        $dbgStr = "";
-        $dbgStr .= $ipv6 . "--" . $commercial_type . "--" . $ssh_key;
-        $dbgStr .= "\n" . $service_id . "--" . $user_id . "--" . $productid;
-        $dbgStr .= "\n" . $hostname . "--" . $password . "--" . $os_name . "--" . $arch . "--" . $image_id . "\n";
-        $dbgStr .= json_encode($curr_server_id);
-
-        logModuleCall
-        (
-            'Scaleway',
-            __FUNCTION__,
-            $params,
-            "ceva",
-            $dbgStr
-        );
     }
     catch (Exception $e)
     {
@@ -1291,7 +1323,7 @@ function Scaleway_updateStats(array $params)
 
         if( !$scwServer->retrieveDetails() )
         {
-            return $scwServer->queryInfo;
+            return "Can't get server info! " . $scwServer->queryInfo;
         }
 
         //Updating fields with data returned from Scaleway.
@@ -1333,7 +1365,17 @@ function Scaleway_updateStats(array $params)
             }
             else
             {
-                return "Failed to set new password. Details: " . $scwServer->queryInfo;
+                //Log request to understand why it failed
+                $request = "";
+                $request .= "Server ID: " . $server_id . "\n";
+                $request .= "SSH Key length: \n" . $ssh_key . "\n\n";
+
+                //Response
+                $response = $scwServer->queryInfo;
+
+                //Send error to Utilities >> Log >> Module Log
+                logModuleCall('Scaleway', __FUNCTION__, $request, "blabla", $response);
+                return "Failed to set new password. Also Utilities >> Log >> Module Log. Details: " . $scwServer->queryInfo;
             }
         }
     }
