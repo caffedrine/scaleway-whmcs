@@ -53,26 +53,37 @@ class ScalewayApi
 	public static $commercialTypes =
                 [
                     // Type => processor_cores D[dedicated]/S[hared]C_RAM
-                    "C1"        => "ARM_4DC_2GB",
-                    "C2S"       => "x86_4DC_8GB",
-                    "C2M"       => "x86_8DC_16GB",
-                    "C2L"       => "x86_8DC_32GB",
 
                     //X64
-                    "X64-2GB"      => "x64_6SC_2GB",
-                    "X64-4GB"      => "x64_6SC_4GB",
-                    "X64-8GB"      => "x64_6SC_8GB",
-                    "X64-15GB"      => "x64_6SC_15GB",
-                    "X64-30GB"      => "x64_8SC_30GB",
-                    "X64-60GB"      => "x64_10SC_60GB",
-                    "X64-120GB"     => "x64_12SC_120GB",
+                    "GP1-XS"        => "x64_4SC_16GB",
+                    "GP1-S"         => "x64_8SC_32GB",
+                    "GP1-M"         => "x64_16SC_64GB",
+                    "GP1-L"         => "x64_32SC_128GB",
+                    "GP1-XL"        => "x64_48SC_256GB",
+
+                    // Developement
+                    "DEV1-S"        => "x86_2SC_2GB",
+                    "DEV1-M"        => "x86_3SC_4GB",
+                    "DEV1-L"        => "x86_4SC_8GB",
+                    "DEV1-XL"       => "x86_4SC_16GB",
+
+                    // GPUs
+                    "RENDER-S"      => "x86_10DC_45GB",
+
+                    // Baremetals
+                    "C1"            => "ARM_4DC_2GB",
+                    "C2S"           => "x86_4DC_8GB",
+                    "C2M"           => "x86_8DC_16GB",
+                    "C2L"           => "x86_8DC_32GB",
 
                     //ARMs
                     "ARM64-2GB"     => "ARM_4SC_2GB",
                     "ARM64-4GB"     => "ARM_6SC_4GB",
                     "ARM64-8GB"     => "ARM_8SC_8GB",
-
-                    //PS: Strange, they say "8 Dedicated x86 64bit", x86 means 32bit...;
+                    "ARM64-16GB"    => "ARM_16SC_16GB",
+                    "ARM64-32GB"    => "ARM_32SC_32GB",
+                    "ARM64-64GB"    => "ARM_48SC_64GB",
+                    "ARM64-128GB"   => "ARM_64SC_128GB",
                 ];
 
     public static $availableLocations =
